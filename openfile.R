@@ -1,12 +1,53 @@
 #opening a long list of file xml and create a table with interesting variable only
 
+
+install.packages("NLP")
+install.packages("pdftools")
+install.packages("tm")
+install.packages("proxy")
+install.packages("topicmodels")
+install.packages("mime")
+install.packages("stringr")
+install.packages("tesseract")
+install.packages("textclean")
+install.packages("SnowballC")
+install.packages("tidytext")
+install.packages("purrr")
+install.packages("udpipe")
+install.packages("rlist")
+
+setwd("C:/Users/despina/Google Drive/ricerca/myprojects/jelprediction")
+#very important
+
+library(pdftools)
+library(purrr)
+library(NLP)
+library(tm)
+library(proxy) #require last version of R
+library(topicmodels)
+library(httpuv)
+library(mime)
+#library(servr)
+library(stringr)
+library(tesseract)
+library(textclean)
+source("ldavis_function.R")
+source("removecommonterms.R")
+library(remotes)
+library(tidyr)
+library(tidytext)
+library(ggplot2)
+library(rlist)
+library(LDAvis)
+
+
 setwd("ngram1")
 library(NLP)
 fileList<-list.files(pattern=".txt")
 doclist <- vector(mode = "list", length = length(fileList))
 
 
-for (j in 1: length(fileList)){
+for (j in 22469:length(fileList) ){
 txt <-as.data.frame(scan(fileList[j], what="character", sep="\t"), colnames=c("data"))
 even_indexes<-seq(2,dim(txt)[1],2)
 odd_indexes<-seq(1,dim(txt)[1],2)
@@ -19,7 +60,7 @@ for (i in 1:dim(text)[1]){
   
 
 text$content[i]<- ifelse(as.numeric(text$freq[1])>1,paste(rep(text$term[i], times=text$freq[i]), collapse = " "),text$term[i])
-print(i)
+
 }
 
 doclist[[j]]<-paste(text$content, collapse = " ")
@@ -50,14 +91,6 @@ corp <- Corpus(VectorSource(txt))
 
 
 ######CLEAN CORPUS
-corp  <- tm_map(corp , removeWords, stopA)
-corp  <- tm_map(corp , removeWords, stopA1)
-corp  <- tm_map(corp , removeWords, stopEM)
-corp  <- tm_map(corp , removeWords, stopF)
-corp  <- tm_map(corp , removeWords, stopGH)
-corp  <- tm_map(corp , removeWords, stopI)
-corp  <- tm_map(corp , removeWords, stopL)
-corp  <- tm_map(corp , removeWords, c("download", "cognetti"))
 
 
 corp  <- tm_map(corp , stemDocument)
@@ -67,14 +100,13 @@ corp <- tm_map(corp,removePunctuation)
 corp <- tm_map(corp,removeNumbers)
 
 
+
 dtm <- DocumentTermMatrix(corp,control = list(tolower = TRUE, removePunctuation = TRUE, removeNumbers= TRUE,stemming = TRUE ,stopwords = TRUE,minWordLength = 3))
 dtm1<-removeSparseTerms(dtm, 0.98)
 dtm1 <- removeCommonTerms(dtm1 ,0.8)
 library(topicmodels)
 
-#check if all documents are there
-rowTotals <- apply(dtm1[1:1652,] , 1, sum) #Find the sum of words in each Document
-check<-which(rowTotals==0, arr.ind=TRUE)
+
 
 #convert dtm1 into a corpus
 dtm2list <- apply(dtm1, 1, function(x) {
@@ -113,7 +145,7 @@ dfplot$word <- factor(dfplot$word,
 fig <- ggplot(dfplot, aes(x=word, y=value)) + geom_bar(stat="identity")
 fig <- fig + xlab("Word in Corpus")
 fig <- fig + ylab("Count")
-print(fig)
+#print(fig)
 
 
 png(filename="jstortopten.png")
@@ -121,30 +153,30 @@ plot(fig)
 dev.off()
 
 
-dfplot <- as.data.frame(melt(many))
-dfplot$word <- dimnames(dfplot)[[1]]
-dfplot$word <- factor(dfplot$word,
-                      levels=dfplot$word[order(dfplot$value,
-                                               decreasing=TRUE)])
+# dfplot <- as.data.frame(melt(many))
+# dfplot$word <- dimnames(dfplot)[[1]]
+# dfplot$word <- factor(dfplot$word,
+#                       levels=dfplot$word[order(dfplot$value,
+#                                                decreasing=TRUE)])
+# 
+# fig <- ggplot(dfplot, aes(x=word, y=value)) + geom_bar(stat="identity")
+# fig <- fig + xlab("Word in Corpus")
+# fig <- fig + ylab("Count")+ 
+#   theme(
+#     axis.text.x=element_blank(),
+#     axis.ticks.x=element_blank())
+# print(fig)
 
-fig <- ggplot(dfplot, aes(x=word, y=value)) + geom_bar(stat="identity")
-fig <- fig + xlab("Word in Corpus")
-fig <- fig + ylab("Count")+ 
-  theme(
-    axis.text.x=element_blank(),
-    axis.ticks.x=element_blank())
-print(fig)
-
-install.packages("wordcloud") # word-cloud generator
+#install.packages("wordcloud") # word-cloud generator
 library(wordcloud)
 set.seed(1234)
-wordcloud<- wordcloud(words = names(wordcount), freq = wordcount, min.freq = 1,
-                      max.words=200, random.order=FALSE, rot.per=0.35, 
-                      colors=brewer.pal(8, "Dark2"))
-
-png(filename="jstorwordcloud.png")
-plot(wordcloud)
-dev.off()
+# wordcloud<- wordcloud(words = names(wordcount), freq = wordcount, min.freq = 1,
+#                       max.words=200, random.order=FALSE, rot.per=0.35, 
+#                       colors=brewer.pal(8, "Dark2"))
+# 
+# png(filename="jstorwordcloud.png")
+# plot(wordcloud)
+# dev.off()
 
 
 #22 311
@@ -153,6 +185,11 @@ dev.off()
 #dtm.new   <- dtm[rowTotals> 0, ] 
 ap_lda1 <- LDA(dtm, 27, method = "Gibbs",control = list(iter = 100, seed = 33))
 
+rowTotals<- apply(dtm,1,sum)
+dtm<-dtm[rowTotals>0,]
 save(ap_lda1, file = "jstorldamodel.Rdata")
 
+serVis(topicmodels2LDAvis(ap_lda1),  out.dir = 'vis')
+
+serVis(topicmodels2LDAvis(ap_lda1))
 
